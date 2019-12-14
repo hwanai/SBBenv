@@ -2,6 +2,24 @@ import gym
 from gym import spaces
 import numpy as np
 import socket
+import time
+
+def recv_until(sock: socket.socket, n: int):
+    buffer = ""
+    read = 0
+    while read < n:
+        income = sock.recv(n - read).decode()
+        read += len(income)
+        buffer += income
+    return buffer
+
+def send_until(sock: socket.socket, data: str):
+    buffer = bytearray(data, 'utf-8')
+    n = 0
+    while n < len(buffer):
+        sent = sock.send(buffer)
+        buffer = buffer[sent:]
+        n += sent
 
 class SBBenv(gym.Env):
     def __init__(self):
@@ -18,14 +36,17 @@ class SBBenv(gym.Env):
         PORT = 10012
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client.connect((SERVER, PORT))
-        self.client.sendall(bytes("RST",'UTF-8'))
+        send_until(self.client, 'RESET\n')
+        if recv_until(self.client, 4) != "DONE":
+            raise Exception('unity server error')
 
     def _take_action(self,action):
-        self.client.sendall(bytes("ACT " + action,'UTF-8'))
+        self.client.sendall(bytes("ACTION " + action,'UTF-8'))
         data = self.client.recv(10000)
         data = data.decode()
 
         finaldata = data.split()
+        reward = finaldata[0]
         obs = finaldata[1:]
 
         return reward, obs
@@ -35,7 +56,6 @@ class SBBenv(gym.Env):
     def step(self, action):
         # Execute one time step within the environment
         reward, obs = self._take_action(self,action)
-        self.current_step += 1
 
         if reward < 0 :
             done = True
@@ -47,15 +67,14 @@ class SBBenv(gym.Env):
 
     def reset(self):
         # Reset the state of the environment to an initial state
-        self.client.sendall(bytes("RST",'UTF-8'))
-        data = self.client.recv(1024)
-
-        data=data.decode()
+        self.client.sendall(bytes("RESET\n",'UTF-8'))
+        if recv_until(self.client, 4) != "DONE":
+            raise Exception('unity server error')
         return self.start()
 
     def start(self):
-        self.client.sendall(bytes("SRT",'UTF-8'))
-        data = client.recv(10000)
+        self.client.sendall(bytes("START\n",'UTF-8'))
+        data = self.client.recv(10000)
         data = data.decode()
 
         finaldata = data.split()
