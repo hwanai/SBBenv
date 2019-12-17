@@ -3,6 +3,7 @@ from gym import spaces
 import numpy as np
 import socket
 import time
+import torch
 
 def recv_until(sock: socket.socket, n: int):
     buffer = ""
@@ -37,47 +38,47 @@ class SBBenv(gym.Env):
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client.connect((SERVER, PORT))
         send_until(self.client, 'RESET\n')
-        if recv_until(self.client, 4) != "DONE":
+        if recv_until(self.client, 5) != "DONE\n":
             raise Exception('unity server error')
 
     def _take_action(self,action):
-        self.client.sendall(bytes("ACTION " + action,'UTF-8'))
-        data = self.client.recv(10000)
+        actiontosend = action.item()
+        send_until(self.client, 'ACTION ' + str(actiontosend) + '\n')
+        #self.client.sendall(bytes("ACTION " + str(actiontosend),'UTF-8'))
+        data = self.client.recv(1024)
         data = data.decode()
 
         finaldata = data.split()
         reward = finaldata[0]
-        obs = finaldata[1:]
 
-        return reward, obs
+        return reward
 
+    def _next_observation(self):
+        send_until(self.client, 'SCREEN\n')
 
+        data = recv_until(self.client, 19201)
+        finaldata = data.split()
+        obs = finaldata
+
+        return obs
 
     def step(self, action):
         # Execute one time step within the environment
-        reward, obs = self._take_action(self,action)
+        reward = self._take_action(action)
 
         if reward < 0 :
             done = True
         else : 
             done = False
 
+        obs = self._next_observation()
+
       
         return obs, reward, done, {}
 
     def reset(self):
         # Reset the state of the environment to an initial state
-        self.client.sendall(bytes("RESET\n",'UTF-8'))
-        if recv_until(self.client, 4) != "DONE":
+        send_until(self.client, 'RESET\n')
+        if recv_until(self.client, 5) != "DONE\n":
             raise Exception('unity server error')
-        return self.start()
-
-    def start(self):
-        self.client.sendall(bytes("START\n",'UTF-8'))
-        data = self.client.recv(10000)
-        data = data.decode()
-
-        finaldata = data.split()
-        obs = finaldata[1:]
-
-        return obs
+        return self._next_observation()
