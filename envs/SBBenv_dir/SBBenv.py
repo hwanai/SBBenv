@@ -45,8 +45,8 @@ class SBBenv(gym.Env):
         actiontosend = action.item()
         send_until(self.client, 'ACTION ' + str(actiontosend) + '\n')
         #self.client.sendall(bytes("ACTION " + str(actiontosend),'UTF-8'))
-        data = self.client.recv(1024)
-        data = data.decode()
+        data = recv_until(self.client, 1024)
+        #data = data.decode()
 
         finaldata = data.split()
         reward = finaldata[0]
