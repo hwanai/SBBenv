@@ -45,7 +45,7 @@ class SBBenv(gym.Env):
         actiontosend = action.item()
         send_until(self.client, 'ACTION ' + str(actiontosend) + '\n')
         #self.client.sendall(bytes("ACTION " + str(actiontosend),'UTF-8'))
-        data = recv_until(self.client, 1024)
+        data = recv_until(self.client, 10)
         #data = data.decode()
 
         finaldata = data.split()
@@ -66,7 +66,9 @@ class SBBenv(gym.Env):
         # Execute one time step within the environment
         reward = self._take_action(action)
 
-        if reward < 0 :
+        reward = float(reward)
+
+        if reward < 0.0 :
             done = True
         else : 
             done = False
@@ -79,6 +81,7 @@ class SBBenv(gym.Env):
     def reset(self):
         # Reset the state of the environment to an initial state
         send_until(self.client, 'RESET\n')
-        if recv_until(self.client, 5) != "DONE\n":
+        response = recv_until(self.client, 5)
+        if response != "DONE\n":
             raise Exception('unity server error')
         return self._next_observation()
