@@ -30,8 +30,8 @@ class SBBenv(gym.Env):
         # Example when using discrete actions:
         self.action_space = spaces.Discrete(31)
         # Example for using image as input:
-        self.observation_space = spaces.Box(low=0, high=255, shape=
-                        (40, 40, 3), dtype=np.uint8)
+        self.observation_space = spaces.Box(low=0.0, high=7.0, shape=
+                        (7, 6), dtype=np.float)
 
         SERVER = "127.0.0.1"
         PORT = 10012
@@ -45,20 +45,22 @@ class SBBenv(gym.Env):
         actiontosend = action.item()
         send_until(self.client, 'ACTION ' + str(actiontosend) + '\n')
         #self.client.sendall(bytes("ACTION " + str(actiontosend),'UTF-8'))
-        data = recv_until(self.client, 10)
+        data = recv_until(self.client, 11)
         #data = data.decode()
 
         finaldata = data.split()
         reward = finaldata[0]
+
+        print("reward value : " + str(reward))
 
         return reward
 
     def _next_observation(self):
         send_until(self.client, 'SCREEN\n')
 
-        data = recv_until(self.client, 19201)
+        data = recv_until(self.client, 463)
         finaldata = data.split()
-        obs = finaldata
+        obs = list(map(lambda x: float(x), finaldata))
 
         return obs
 
@@ -82,6 +84,7 @@ class SBBenv(gym.Env):
         # Reset the state of the environment to an initial state
         send_until(self.client, 'RESET\n')
         response = recv_until(self.client, 5)
+        print(response)
         if response != "DONE\n":
             raise Exception('unity server error')
         return self._next_observation()
