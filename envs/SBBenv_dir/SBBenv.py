@@ -30,8 +30,8 @@ class SBBenv(gym.Env):
         # Example when using discrete actions:
         self.action_space = spaces.Discrete(31)
         # Example for using image as input:
-        self.observation_space = spaces.Box(low=0.0, high=7.0, shape=
-                        (7, 6), dtype=np.float)
+        self.observation_space = spaces.Box(low=0.0, high=1, shape=
+                        (40, 40, 3), dtype=np.float)
 
         SERVER = "127.0.0.1"
         PORT = 10012
@@ -58,9 +58,9 @@ class SBBenv(gym.Env):
     def _next_observation(self):
         send_until(self.client, 'SCREEN\n')
 
-        data = recv_until(self.client, 463)
+        data = recv_until(self.client, 19201)
         finaldata = data.split()
-        obs = list(map(lambda x: float(x), finaldata))
+        obs = list(map(lambda x: int(x) / 255.0, finaldata))
 
         return obs
 
